@@ -170,7 +170,7 @@ Docker Host
 
 ## Roadmap
 
-See [/data/ws/kronos/tickets/PLAN-001-Productionization-Roadmap.md](../../tickets/PLAN-001-Productionization-Roadmap.md)
+See [tickets/TICKET_002_PLN_Productionization-Roadmap.md](tickets/TICKET_002_PLN_Productionization-Roadmap.md)
 
 - [x] Phase 1: Dockerization
 - [ ] Phase 2: Security middleware
