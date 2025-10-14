@@ -3,10 +3,11 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from slowapi import Limiter
 
 from .config import Settings, get_settings
 from .logging_utils import REQUEST_ID_HEADER, get_logger
-from .metrics import record_metrics
+from .metrics import record_metrics, RATE_LIMIT_HITS
 from .predictor import PredictorManager
 from .schemas import (
     HealthResponse,

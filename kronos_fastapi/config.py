@@ -28,6 +28,20 @@ class Settings(BaseSettings):
 
     enable_metrics: bool = Field(True, env="KRONOS_ENABLE_METRICS")
 
+    # Security settings
+    security_enabled: bool = Field(True, env="KRONOS_SECURITY_ENABLED")
+    container_whitelist: str = Field(
+        "localhost,frontend-app,worker-service,scheduler",
+        env="KRONOS_CONTAINER_WHITELIST"
+    )
+
+    # Rate limiting
+    rate_limit_enabled: bool = Field(True, env="KRONOS_RATE_LIMIT_ENABLED")
+    rate_limit_per_minute: int = Field(100, env="KRONOS_RATE_LIMIT_PER_MINUTE")
+
+    # Request limits
+    max_request_size_mb: int = Field(10, env="KRONOS_MAX_REQUEST_SIZE_MB")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
