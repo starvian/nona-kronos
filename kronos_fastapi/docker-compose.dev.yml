@@ -1,0 +1,91 @@
+version: '3.8'
+
+# Development configuration with hot-reload and debugging features
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+services:
+  kronos-api:
+    build:
+      context: ../..
+      dockerfile: services/kronos_fastapi/Dockerfile
+    image: kronos-fastapi:dev
+    container_name: kronos-api-dev
+    hostname: kronos-api-dev
+
+    # Environment variables for development
+    environment:
+      - KRONOS_APP_NAME=Kronos FastAPI Service (DEV)
+      - KRONOS_LOG_LEVEL=DEBUG  # More verbose logging
+      - KRONOS_MODEL_PATH=/models
+      - KRONOS_DEVICE=${KRONOS_DEVICE:-cpu}
+      - KRONOS_MAX_CONTEXT=512
+      - KRONOS_DEFAULT_PRED_LEN=120
+      - KRONOS_DEFAULT_TEMPERATURE=1.0
+      - KRONOS_DEFAULT_TOP_P=0.9
+      - KRONOS_ENABLE_METRICS=true
+
+    # Override command with reload enabled
+    command: uvicorn services.kronos_fastapi.main:app --host 0.0.0.0 --port 8000 --reload
+
+    # Volumes with code mounted for hot-reload
+    volumes:
+      - ${KRONOS_MODEL_HOST_PATH:-../../../models}:/models:ro
+      - ../..:/app  # Mount source code for hot-reload
+      - logs:/logs
+
+    # Networks
+    networks:
+      - kronos-internal
+
+    # Expose port for development access
+    ports:
+      - "${KRONOS_PORT:-8000}:8000"
+
+    # No resource limits in development for flexibility
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: 4G
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Example consumer container for testing
+  test-consumer:
+    image: curlimages/curl:latest
+    container_name: test-consumer
+    hostname: test-consumer
+    networks:
+      - kronos-internal
+    command: sleep infinity  # Keep container running
+    profiles:
+      - testing  # Only start with --profile testing
+
+networks:
+  kronos-internal:
+    driver: bridge
+    internal: false  # Allow internet access for development
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  logs:
+    driver: local
