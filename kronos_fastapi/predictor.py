@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -199,3 +200,75 @@ class PredictorManager:
             outputs.append(df.reset_index().rename(columns={"index": "timestamp"}))
 
         return outputs
+
+    # Async methods for non-blocking inference (Phase 3)
+
+    async def predict_single_async(
+        self,
+        candles: Sequence[dict],
+        timestamps: Sequence[pd.Timestamp],
+        prediction_timestamps: Sequence[pd.Timestamp],
+        overrides: Optional[dict] = None,
+        timeout: Optional[float] = None,
+    ) -> pd.DataFrame:
+        """Async prediction for single time series with timeout support.
+
+        Runs prediction in thread pool to avoid blocking the event loop.
+        """
+        if not self._predictor:
+            raise RuntimeError("Predictor not initialized")
+
+        # Use configured timeout if not provided
+        timeout_seconds = timeout if timeout is not None else self._settings.inference_timeout
+
+        try:
+            # Run sync prediction in thread pool
+            prediction = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.predict_single,
+                    candles=candles,
+                    timestamps=timestamps,
+                    prediction_timestamps=prediction_timestamps,
+                    overrides=overrides,
+                ),
+                timeout=timeout_seconds
+            )
+            return prediction
+
+        except asyncio.TimeoutError as exc:
+            logger.error(f"Prediction timeout after {timeout_seconds}s")
+            raise TimeoutError(
+                f"Prediction timeout after {timeout_seconds} seconds"
+            ) from exc
+
+    async def predict_batch_async(
+        self,
+        series: Sequence[dict],
+        timeout: Optional[float] = None,
+    ) -> List[pd.DataFrame]:
+        """Async prediction for batch with timeout support.
+
+        Runs batch prediction in thread pool to avoid blocking the event loop.
+        """
+        if not self._predictor:
+            raise RuntimeError("Predictor not initialized")
+
+        # Use configured timeout if not provided
+        timeout_seconds = timeout if timeout is not None else self._settings.inference_timeout
+
+        try:
+            # Run sync batch prediction in thread pool
+            predictions = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.predict_batch,
+                    series=series,
+                ),
+                timeout=timeout_seconds
+            )
+            return predictions
+
+        except asyncio.TimeoutError as exc:
+            logger.error(f"Batch prediction timeout after {timeout_seconds}s")
+            raise TimeoutError(
+                f"Batch prediction timeout after {timeout_seconds} seconds"
+            ) from exc

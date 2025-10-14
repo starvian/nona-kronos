@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # Request limits
     max_request_size_mb: int = Field(10, env="KRONOS_MAX_REQUEST_SIZE_MB")
 
+    # Timeout settings (Phase 3)
+    inference_timeout: int = Field(30, env="KRONOS_INFERENCE_TIMEOUT")
+    request_timeout: int = Field(60, env="KRONOS_REQUEST_TIMEOUT")
+    startup_timeout: int = Field(120, env="KRONOS_STARTUP_TIMEOUT")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Histogram, Gauge
 
 
 REQUEST_COUNTER = Counter(
@@ -34,6 +34,32 @@ REQUEST_SIZE_REJECTIONS = Counter(
     'kronos_request_size_rejections_total',
     'Rejected requests due to size limit',
     ['container']
+)
+
+# Performance metrics (Phase 3)
+MODEL_INFERENCE_TIME = Histogram(
+    'kronos_model_inference_seconds',
+    'Model inference time (excluding pre/post processing)',
+    ['endpoint'],
+    buckets=[0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+)
+
+CONCURRENT_REQUESTS = Gauge(
+    'kronos_concurrent_requests',
+    'Number of requests currently being processed'
+)
+
+TIMEOUT_COUNTER = Counter(
+    'kronos_timeouts_total',
+    'Number of prediction timeouts',
+    ['endpoint']
+)
+
+PREDICTION_INPUT_SIZE = Histogram(
+    'kronos_prediction_input_size',
+    'Size of prediction input (number of candles)',
+    ['endpoint'],
+    buckets=[50, 100, 200, 400, 800, 1600]
 )
 
 

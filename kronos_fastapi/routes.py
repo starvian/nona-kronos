@@ -64,7 +64,8 @@ async def predict_single(
     route = "/v1/predict/single"
 
     try:
-        prediction_df = manager.predict_single(
+        # Use async prediction to avoid blocking event loop (Phase 3)
+        prediction_df = await manager.predict_single_async(
             candles=[c.dict() for c in payload.candles],
             timestamps=payload.timestamps,
             prediction_timestamps=payload.prediction_timestamps,
@@ -91,6 +92,14 @@ async def predict_single(
             model_version=manager.model_version,
             tokenizer_version=manager.tokenizer_version,
         )
+    except TimeoutError as exc:
+        duration = perf_counter() - start
+        record_metrics(route, "timeout", duration)
+        logger.warning(
+            "single prediction timeout",
+            extra={"request_id": getattr(request.state, "request_id", None)},
+        )
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
     except Exception as exc:  # pylint: disable=broad-except
         duration = perf_counter() - start
         record_metrics(route, "error", duration)
@@ -114,7 +123,8 @@ async def predict_batch(
     route = "/v1/predict/batch"
 
     try:
-        predictions = manager.predict_batch(
+        # Use async prediction to avoid blocking event loop (Phase 3)
+        predictions = await manager.predict_batch_async(
             [
                 {
                     "candles": [c.dict() for c in item.candles],
@@ -150,6 +160,14 @@ async def predict_batch(
                 )
             )
         return responses
+    except TimeoutError as exc:
+        duration = perf_counter() - start
+        record_metrics(route, "timeout", duration)
+        logger.warning(
+            "batch prediction timeout",
+            extra={"request_id": getattr(request.state, "request_id", None)},
+        )
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
     except Exception as exc:  # pylint: disable=broad-except
         duration = perf_counter() - start
         record_metrics(route, "error", duration)
