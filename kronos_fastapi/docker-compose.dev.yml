@@ -23,6 +23,9 @@ services:
       - KRONOS_DEFAULT_TEMPERATURE=1.0
       - KRONOS_DEFAULT_TOP_P=0.9
       - KRONOS_ENABLE_METRICS=true
+      # Security settings (DISABLED for development ease)
+      - KRONOS_SECURITY_ENABLED=false  # Disabled for easy local testing
+      - KRONOS_RATE_LIMIT_ENABLED=false  # Disabled for development
 
     # Override command with reload enabled
     command: uvicorn services.kronos_fastapi.main:app --host 0.0.0.0 --port 8000 --reload
