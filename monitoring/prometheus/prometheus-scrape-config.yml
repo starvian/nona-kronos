@@ -1,0 +1,173 @@
+# Prometheus Scrape Configuration for Kronos FastAPI Service
+#
+# Usage: Add this configuration to your existing prometheus.yml
+#
+# This is an EXAMPLE configuration showing how to integrate Kronos
+# into your centralized Prometheus monitoring setup.
+
+# Example: Complete prometheus.yml structure
+# ============================================
+# global:
+#   scrape_interval: 15s
+#   evaluation_interval: 15s
+#   external_labels:
+#     cluster: 'production'
+#     environment: 'prod'
+#
+# rule_files:
+#   - "alerts/*.yml"
+#   - "kronos-alerts.yml"  # Include Kronos alerts
+#
+# scrape_configs:
+#   # Your existing services...
+#   - job_name: 'python-backend'
+#     static_configs:
+#       - targets: ['python-backend:8080']
+#
+#   - job_name: 'wordpress'
+#     static_configs:
+#       - targets: ['wordpress-exporter:9117']
+#
+#   # Add Kronos configuration below
+#   - job_name: 'kronos-api'
+#     # ... (see configuration below)
+
+# ============================================
+# Kronos FastAPI Scrape Configuration
+# ============================================
+
+scrape_configs:
+  # Kronos FastAPI Service
+  - job_name: 'kronos-api'
+    # How often to scrape metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+    # Metrics endpoint path (Kronos specific)
+    metrics_path: '/v1/metrics'
+
+    # Service discovery configuration
+    # Option 1: Static configuration (simple)
+    static_configs:
+      - targets:
+          - 'kronos-api:8000'  # Single instance
+        labels:
+          service: 'kronos-api'
+          environment: 'production'
+
+    # Option 2: Multiple instances (if horizontally scaled)
+    # static_configs:
+    #   - targets:
+    #       - 'kronos-api-1:8000'
+    #       - 'kronos-api-2:8000'
+    #       - 'kronos-api-3:8000'
+    #     labels:
+    #       service: 'kronos-api'
+    #       environment: 'production'
+
+    # Option 3: Docker service discovery (if using Docker Swarm)
+    # dockerswarm_sd_configs:
+    #   - host: unix:///var/run/docker.sock
+    #     role: tasks
+    # relabel_configs:
+    #   - source_labels: [__meta_dockerswarm_service_name]
+    #     regex: kronos-api
+    #     action: keep
+    #   - source_labels: [__meta_dockerswarm_task_port_publish_mode]
+    #     regex: host
+    #     action: keep
+
+    # Metric relabeling (optional)
+    # Add custom labels to all Kronos metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'kronos_.*'
+        target_label: 'team'
+        replacement: 'ml-platform'
+
+      # Drop unnecessary metrics (example)
+      # - source_labels: [__name__]
+      #   regex: 'process_.*|python_.*'
+      #   action: drop
+
+# ============================================
+# Network Configuration
+# ============================================
+
+# Important: Ensure Prometheus can reach Kronos
+#
+# If using Docker networks:
+# 1. Add Prometheus to the 'monitoring' network
+# 2. Ensure Kronos is also on the 'monitoring' network
+#
+# Example docker-compose.yml for Prometheus:
+#
+# services:
+#   prometheus:
+#     image: prom/prometheus:latest
+#     networks:
+#       - monitoring
+#     volumes:
+#       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+#
+# networks:
+#   monitoring:
+#     external: true  # Use existing monitoring network
+
+# ============================================
+# Testing the Configuration
+# ============================================
+
+# 1. Verify metrics endpoint is accessible:
+#    curl http://kronos-api:8000/v1/metrics
+#
+# 2. Check Prometheus targets page:
+#    http://prometheus:9090/targets
+#
+# 3. Query Kronos metrics:
+#    http://prometheus:9090/graph
+#    Example query: rate(kronos_requests_total[5m])
+#
+# 4. Check if metrics are being scraped:
+#    up{job="kronos-api"}  # Should return 1
+
+# ============================================
+# Available Kronos Metrics
+# ============================================
+
+# Request Metrics:
+# - kronos_requests_total{route, status}
+# - kronos_request_duration_seconds{route}
+#
+# Performance Metrics:
+# - kronos_model_inference_seconds{endpoint}
+# - kronos_concurrent_requests
+# - kronos_timeouts_total{endpoint}
+# - kronos_prediction_input_size{endpoint}
+#
+# Security Metrics:
+# - kronos_security_events_total{event, container}
+# - kronos_rate_limit_hits_total{container}
+# - kronos_request_size_rejections_total{container}
+
+# ============================================
+# Troubleshooting
+# ============================================
+
+# Problem: Target shows as "DOWN"
+# Solution:
+#   - Check network connectivity: docker exec prometheus ping kronos-api
+#   - Verify port is exposed: docker ps | grep kronos-api
+#   - Check metrics endpoint: curl http://kronos-api:8000/v1/metrics
+#
+# Problem: Metrics not appearing
+# Solution:
+#   - Verify metrics_path is correct: /v1/metrics (not /metrics)
+#   - Check Prometheus logs: docker logs prometheus
+#   - Verify scrape config: curl http://prometheus:9090/api/v1/targets
+#
+# Problem: Some metrics missing
+# Solution:
+#   - Metrics only appear after first request
+#   - Send test request: curl http://kronos-api:8000/v1/healthz
+#   - Wait for next scrape interval (15s)

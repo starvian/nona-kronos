@@ -1,0 +1,203 @@
+# Prometheus Alert Rules for Kronos FastAPI Service
+#
+# Usage: Merge this file into your existing Prometheus alerting configuration
+#
+# Example prometheus.yml:
+#   rule_files:
+#     - "alerts/*.yml"
+#     - "kronos-alerts.yml"  # Add this file
+
+groups:
+  - name: kronos_api_alerts
+    interval: 30s
+    rules:
+      # Critical Alerts - Immediate Action Required
+
+      - alert: KronosServiceDown
+        expr: up{job="kronos-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: kronos-api
+        annotations:
+          summary: "Kronos API service is down"
+          description: "Kronos API ({{ $labels.instance }}) has been down for more than 1 minute."
+          impact: "Predictions unavailable. All dependent services affected."
+          action: "Check container status: docker ps | grep kronos-api; Check logs: docker logs kronos-api"
+
+      - alert: KronosHighErrorRate
+        expr: |
+          (
+            rate(kronos_requests_total{status="error"}[5m])
+            /
+            rate(kronos_requests_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: kronos-api
+        annotations:
+          summary: "High error rate detected (>5%)"
+          description: "Kronos API error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          impact: "Users experiencing frequent prediction failures."
+          action: "Check error logs: docker logs kronos-api | grep ERROR; Review recent deployments."
+
+      - alert: KronosModelNotLoaded
+        expr: kronos_requests_total{status="error"} > 0 and up{job="kronos-api"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          service: kronos-api
+        annotations:
+          summary: "Kronos model may not be loaded"
+          description: "Service is up but returning errors consistently. Model may have failed to load."
+          impact: "All predictions failing with 503 Service Unavailable."
+          action: "Check readiness: curl http://kronos-api:8000/v1/readyz; Check startup logs for model loading errors."
+
+      # Warning Alerts - Attention Needed
+
+      - alert: KronosHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(kronos_request_duration_seconds_bucket[5m])
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: kronos-api
+        annotations:
+          summary: "High latency detected (p95 > 5s)"
+          description: "Kronos API p95 latency is {{ $value }}s over the last 5 minutes."
+          impact: "Users experiencing slow predictions. May lead to timeouts."
+          action: "Check CPU usage; Review concurrent requests; Consider scaling workers."
+
+      - alert: KronosHighTimeoutRate
+        expr: |
+          (
+            rate(kronos_timeouts_total[5m])
+            /
+            rate(kronos_requests_total[5m])
+          ) > 0.005
+        for: 3m
+        labels:
+          severity: warning
+          service: kronos-api
+        annotations:
+          summary: "High timeout rate detected (>0.5%)"
+          description: "Kronos API timeout rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          impact: "Some predictions timing out. Users may retry."
+          action: "Check inference time metrics; Review timeout configuration; Consider increasing KRONOS_INFERENCE_TIMEOUT."
+
+      - alert: KronosHighMemoryUsage
+        expr: |
+          (
+            container_memory_usage_bytes{name=~".*kronos-api.*"}
+            /
+            container_spec_memory_limit_bytes{name=~".*kronos-api.*"}
+          ) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: kronos-api
+        annotations:
+          summary: "High memory usage (>90%)"
+          description: "Kronos API memory usage is {{ $value | humanizePercentage }} of limit."
+          impact: "Risk of OOM kill. Service may restart unexpectedly."
+          action: "Check for memory leaks; Consider increasing memory limit; Review worker count."
+
+      - alert: KronosHighConcurrency
+        expr: kronos_concurrent_requests > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: kronos-api
+        annotations:
+          summary: "High concurrent requests (>20)"
+          description: "Kronos API has {{ $value }} concurrent requests."
+          impact: "Service under heavy load. Latency may increase."
+          action: "Monitor performance; Consider horizontal scaling; Review rate limits."
+
+      - alert: KronosExcessiveRateLimiting
+        expr: rate(kronos_rate_limit_hits_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: kronos-api
+        annotations:
+          summary: "Excessive rate limiting detected"
+          description: "Container {{ $labels.container }} hitting rate limits at {{ $value }} req/s."
+          impact: "Requests being rejected. Clients experiencing 429 errors."
+          action: "Review rate limit configuration; Investigate client behavior; Consider adjusting limits for legitimate traffic."
+
+      # Info Alerts - Monitoring
+
+      - alert: KronosSlowInference
+        expr: |
+          histogram_quantile(0.95,
+            rate(kronos_model_inference_seconds_bucket[5m])
+          ) > 3
+        for: 10m
+        labels:
+          severity: info
+          service: kronos-api
+        annotations:
+          summary: "Model inference is slow (p95 > 3s)"
+          description: "Model inference time (p95) is {{ $value }}s for {{ $labels.endpoint }}."
+          impact: "Predictions taking longer than expected."
+          action: "Check CPU utilization; Review input size; Consider model optimization."
+
+      - alert: KronosLowThroughput
+        expr: rate(kronos_requests_total[5m]) < 0.1
+        for: 15m
+        labels:
+          severity: info
+          service: kronos-api
+        annotations:
+          summary: "Low request rate detected"
+          description: "Kronos API receiving less than 0.1 req/s ({{ $value }} req/s)."
+          impact: "May indicate upstream issues or low usage."
+          action: "Verify service is accessible; Check client health; Review integration status."
+
+      - alert: KronosSecurityEvents
+        expr: rate(kronos_security_events_total{event="unauthorized"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: info
+          service: kronos-api
+        annotations:
+          summary: "Security events detected"
+          description: "Container {{ $labels.container }} triggering security events: {{ $labels.event }}."
+          impact: "Potential security issue or misconfiguration."
+          action: "Review container whitelist; Check security logs; Verify authorized containers."
+
+# Alert Manager Configuration Example
+#
+# Add to your alertmanager.yml:
+#
+# route:
+#   group_by: ['alertname', 'service']
+#   group_wait: 10s
+#   group_interval: 10s
+#   repeat_interval: 12h
+#   receiver: 'default'
+#   routes:
+#     - match:
+#         severity: critical
+#       receiver: 'critical-alerts'
+#     - match:
+#         severity: warning
+#       receiver: 'warning-alerts'
+#
+# receivers:
+#   - name: 'critical-alerts'
+#     slack_configs:
+#       - api_url: 'YOUR_SLACK_WEBHOOK'
+#         channel: '#alerts-critical'
+#         title: '{{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+#
+#   - name: 'warning-alerts'
+#     email_configs:
+#       - to: 'team@example.com'
+#         from: 'alertmanager@example.com'
+#         smarthost: 'smtp.example.com:587'

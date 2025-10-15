@@ -12,11 +12,27 @@ class JsonFormatter(logging.Formatter):
         log_record: Dict[str, Any] = {
             "timestamp": self.formatTime(record, self.datefmt),
             "level": record.levelname,
-            "name": record.name,
+            "logger": record.name,
             "message": record.getMessage(),
         }
 
-        for key in ("request_id", "latency_ms", "path", "method", "status_code", "rows", "pred_len", "series_count"):
+        # Enhanced context fields (Phase 4)
+        context_fields = (
+            # Request tracking
+            "request_id", "container", "client_host",
+            # Request details
+            "path", "method", "status_code",
+            # Performance metrics
+            "latency_ms", "model_inference_ms", "queue_time_ms",
+            # Prediction details
+            "series_id", "rows", "pred_len", "series_count",
+            # Input/output sizes
+            "request_size_bytes", "response_size_bytes",
+            # Error context
+            "error_type", "error_message", "timeout_seconds",
+        )
+
+        for key in context_fields:
             value = getattr(record, key, None)
             if value is not None:
                 log_record[key] = value
