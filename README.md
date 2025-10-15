@@ -183,7 +183,7 @@ See [tickets/TICKET_002_PLN_Productionization-Roadmap.md](tickets/TICKET_002_PLN
 - [x] Phase 2: Security middleware ✅
 - [x] Phase 3: Performance optimization ✅
 - [x] Phase 4: Enhanced observability ✅
-- [ ] Phase 5: Production hardening
+- [x] Phase 5: Production hardening ✅
 - [ ] Phase 6: Documentation
 
 ## Contributing
@@ -205,6 +205,7 @@ MIT License - Same as original Kronos project
 - [Security Guide](kronos_fastapi/SECURITY.md) - Security architecture and configuration
 - [Performance Guide](kronos_fastapi/PERFORMANCE.md) - Performance optimization and load testing
 - [Observability Guide](kronos_fastapi/OBSERVABILITY.md) - Metrics, logging, and monitoring integration
+- [Deployment Guide](kronos_fastapi/DEPLOYMENT.md) - Production deployment procedures and best practices
 - [Monitoring Integration](monitoring/README.md) - Quick start for Prometheus/Grafana setup
 - [Tickets](tickets/) - Implementation tickets and design documents
 
@@ -218,5 +219,5 @@ For questions or issues:
 
 ---
 
-**Status:** Phase 4 Complete (Enhanced Observability) ✅
-**Next:** Phase 5 - Production Hardening
+**Status:** Phase 5 Complete (Production Hardening) ✅
+**Next:** Phase 6 - Documentation

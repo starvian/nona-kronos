@@ -4,3 +4,4 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 prometheus-client>=0.20.0
 slowapi>=0.1.9
+psutil>=5.9.0  # Phase 5: Detailed health checks

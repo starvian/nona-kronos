@@ -56,6 +56,34 @@ async def startup_event() -> None:
         logger.info("predictor manager ready")
 
 
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Graceful shutdown handler.
+
+    Ensures:
+    - In-flight requests complete (handled by uvicorn)
+    - Resources cleaned up properly
+    - Shutdown logged for monitoring
+    """
+    logger.info("graceful shutdown initiated")
+
+    try:
+        # Get predictor manager
+        manager = PredictorManagerRegistry.get(settings)
+
+        # Clean up resources
+        if manager.ready:
+            logger.info("cleaning up predictor resources")
+            # Model cleanup is handled by Python GC
+            # But we can explicitly mark as not ready
+            manager._predictor = None
+            logger.info("predictor resources cleaned up")
+
+        logger.info("graceful shutdown complete")
+    except Exception as exc:
+        logger.error(f"error during shutdown: {exc}", exc_info=True)
+
+
 @app.get("/", include_in_schema=False)
 async def root() -> dict[str, str]:
     return {"message": settings.app_name}

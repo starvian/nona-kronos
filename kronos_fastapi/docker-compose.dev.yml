@@ -54,6 +54,10 @@ services:
     # Restart policy
     restart: unless-stopped
 
+    # Graceful shutdown (Phase 5)
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+
     # Health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/healthz"]

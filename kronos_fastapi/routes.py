@@ -10,6 +10,7 @@ from .logging_utils import REQUEST_ID_HEADER, get_logger
 from .metrics import record_metrics, RATE_LIMIT_HITS
 from .predictor import PredictorManager
 from .schemas import (
+    ErrorResponse,
     HealthResponse,
     PredictBatchRequest,
     PredictResponse,
@@ -49,6 +50,56 @@ async def health() -> HealthResponse:
 @router.get("/readyz", response_model=ReadyResponse)
 async def ready(manager: PredictorManager = Depends(get_predictor_manager)) -> ReadyResponse:
     return ReadyResponse(status="ok" if manager.ready else "loading", model_loaded=manager.ready)
+
+
+@router.get("/healthz/detailed")
+async def detailed_health(manager: PredictorManager = Depends(get_predictor_manager)) -> dict:
+    """Detailed health check with system metrics (Phase 5)."""
+    import psutil
+    import time
+    from datetime import datetime, timezone
+
+    # Get process info
+    process = psutil.Process()
+    memory_info = process.memory_info()
+
+    # Get system memory
+    system_memory = psutil.virtual_memory()
+
+    # Get disk info
+    disk_usage = psutil.disk_usage('/')
+
+    # Calculate uptime
+    create_time = process.create_time()
+    uptime_seconds = time.time() - create_time
+
+    health_status = {
+        "status": "healthy" if manager.ready else "degraded",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "uptime_seconds": round(uptime_seconds, 2),
+        "checks": {
+            "model": {
+                "status": "healthy" if manager.ready else "loading",
+                "loaded": manager.ready,
+                "version": manager.model_version if manager.ready else None,
+            },
+            "memory": {
+                "status": "healthy" if system_memory.percent < 90 else "warning",
+                "process_mb": round(memory_info.rss / 1024 / 1024, 2),
+                "system_total_mb": round(system_memory.total / 1024 / 1024, 2),
+                "system_available_mb": round(system_memory.available / 1024 / 1024, 2),
+                "system_percent": system_memory.percent,
+            },
+            "disk": {
+                "status": "healthy" if disk_usage.percent < 90 else "warning",
+                "total_gb": round(disk_usage.total / 1024 / 1024 / 1024, 2),
+                "free_gb": round(disk_usage.free / 1024 / 1024 / 1024, 2),
+                "percent": disk_usage.percent,
+            },
+        },
+    }
+
+    return health_status
 
 
 @router.post("/predict/single", response_model=PredictResponse)
