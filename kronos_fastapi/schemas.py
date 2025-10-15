@@ -149,6 +149,8 @@ class HealthResponse(BaseModel):
 class ReadyResponse(BaseModel):
     status: str
     model_loaded: bool
+    device: Optional[str] = None
+    device_warning: Optional[str] = None
 
 
 # Enhanced error responses (Phase 5)

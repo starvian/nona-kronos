@@ -49,7 +49,12 @@ async def health() -> HealthResponse:
 
 @router.get("/readyz", response_model=ReadyResponse)
 async def ready(manager: PredictorManager = Depends(get_predictor_manager)) -> ReadyResponse:
-    return ReadyResponse(status="ok" if manager.ready else "loading", model_loaded=manager.ready)
+    return ReadyResponse(
+        status="ok" if manager.ready else "loading",
+        model_loaded=manager.ready,
+        device=manager.device,
+        device_warning=manager.device_warning,
+    )
 
 
 @router.get("/healthz/detailed")

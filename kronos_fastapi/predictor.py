@@ -46,6 +46,18 @@ class PredictorManager:
     def tokenizer_version(self) -> Optional[str]:
         return self._tokenizer_version
 
+    @property
+    def device(self) -> Optional[str]:
+        if self._predictor is None:
+            return None
+        return str(self._predictor.device)
+
+    @property
+    def device_warning(self) -> Optional[str]:
+        if self._predictor is None:
+            return None
+        return self._predictor.device_warning
+
     def load(self) -> None:
         logger.info("loading Kronos tokenizer and model")
 
@@ -85,12 +97,17 @@ class PredictorManager:
             clip=self._settings.clip_value,
         )
 
+        resolved_device = str(self._predictor.device)
+        if self._predictor.device_warning:
+            logger.warning(self._predictor.device_warning)
+
         logger.info(
             "Kronos predictor initialized",
             extra={
                 "model_source": model_source,
                 "tokenizer_source": tokenizer_source,
-                "device": self._settings.device,
+                "device_requested": self._settings.device,
+                "device_resolved": resolved_device,
             },
         )
 
