@@ -43,9 +43,10 @@ class Settings(BaseSettings):
     max_request_size_mb: int = Field(10, env="KRONOS_MAX_REQUEST_SIZE_MB")
 
     # Timeout settings (Phase 3)
-    inference_timeout: int = Field(30, env="KRONOS_INFERENCE_TIMEOUT")
-    request_timeout: int = Field(60, env="KRONOS_REQUEST_TIMEOUT")
-    startup_timeout: int = Field(120, env="KRONOS_STARTUP_TIMEOUT")
+    # 注意: 增加默认值以支持长序列预测
+    inference_timeout: int = Field(default=240, env="KRONOS_INFERENCE_TIMEOUT")
+    request_timeout: int = Field(default=300, env="KRONOS_REQUEST_TIMEOUT")
+    startup_timeout: int = Field(default=300, env="KRONOS_STARTUP_TIMEOUT")
 
     class Config:
         env_file = ".env"

@@ -1,0 +1,93 @@
+version: '3.8'
+
+# CPU-optimized configuration for Kronos FastAPI Service
+# Usage: docker-compose -f docker-compose.cpu.yml up
+
+services:
+  kronos-api-cpu:
+    build:
+      context: ../..
+      dockerfile: services/kronos_fastapi/Dockerfile.cpu
+    image: kronos-fastapi:cpu
+    container_name: kronos-api-cpu
+    hostname: kronos-api-cpu
+
+    # Environment variables - CPU optimized
+    environment:
+      - KRONOS_APP_NAME=Kronos FastAPI Service (CPU)
+      - KRONOS_LOG_LEVEL=${KRONOS_LOG_LEVEL:-INFO}
+      - KRONOS_MODEL_PATH=/models
+      - KRONOS_DEVICE=cpu  # CPU device
+      - KRONOS_MAX_CONTEXT=512
+      - KRONOS_DEFAULT_PRED_LEN=120
+      - KRONOS_DEFAULT_TEMPERATURE=1.0
+      - KRONOS_DEFAULT_TOP_P=0.9
+      - KRONOS_ENABLE_METRICS=true
+      # Security settings (Phase 2)
+      - KRONOS_SECURITY_ENABLED=${KRONOS_SECURITY_ENABLED:-true}
+      - KRONOS_CONTAINER_WHITELIST=${KRONOS_CONTAINER_WHITELIST:-localhost,frontend-app,worker-service,scheduler}
+      - KRONOS_RATE_LIMIT_ENABLED=${KRONOS_RATE_LIMIT_ENABLED:-true}
+      - KRONOS_RATE_LIMIT_PER_MINUTE=${KRONOS_RATE_LIMIT_PER_MINUTE:-100}
+      - KRONOS_MAX_REQUEST_SIZE_MB=${KRONOS_MAX_REQUEST_SIZE_MB:-10}
+
+    # Volumes
+    volumes:
+      - ${KRONOS_MODEL_HOST_PATH:-../../../models}:/models:ro  # Read-only model files
+      - logs-cpu:/logs  # Persistent logs
+
+    # Networks
+    networks:
+      - kronos-internal
+
+    # No external port mapping for security (internal access only)
+    # To access from host for testing, temporarily uncomment below:
+    # ports:
+    #   - "8000:8000"
+
+    # CPU resource limits - optimized for CPU inference
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Graceful shutdown (Phase 5)
+    # Allow 30 seconds for in-flight requests to complete
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  kronos-internal:
+    driver: bridge
+    # Set to true for complete isolation (no internet access)
+    # Set to false to allow model downloads from Hugging Face
+    internal: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  logs-cpu:
+    driver: local

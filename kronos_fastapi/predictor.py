@@ -60,6 +60,14 @@ class PredictorManager:
 
     def load(self) -> None:
         logger.info("loading Kronos tokenizer and model")
+        
+        # DEBUG: Log configuration on startup
+        logger.info(
+            f"Service configuration: "
+            f"device={self._settings.device}, "
+            f"inference_timeout={self._settings.inference_timeout}s, "
+            f"request_timeout={self._settings.request_timeout}s"
+        )
 
         # Use Hugging Face IDs if provided, otherwise use local paths
         if self._settings.tokenizer_id:
@@ -144,7 +152,7 @@ class PredictorManager:
 
         x_df = df[["open", "high", "low", "close", "volume", "amount"]]
         x_timestamp = df["timestamps"]
-        y_timestamp = pd.to_datetime(prediction_timestamps)
+        y_timestamp = pd.Series(pd.to_datetime(prediction_timestamps))
 
         prediction = self._predictor.predict(
             df=x_df,
@@ -186,7 +194,7 @@ class PredictorManager:
 
             df_list.append(df)
             x_timestamp_list.append(pd.Series(timestamps))
-            y_timestamp_list.append(pd.Series(prediction_timestamps))
+            y_timestamp_list.append(pd.Series(pd.to_datetime(prediction_timestamps)))
 
         first_params = params_per_series[0]
 
@@ -237,6 +245,15 @@ class PredictorManager:
 
         # Use configured timeout if not provided
         timeout_seconds = timeout if timeout is not None else self._settings.inference_timeout
+        
+        # DEBUG: Log the actual timeout being used
+        logger.info(
+            f"predict_single_async starting: "
+            f"input_len={len(candles)}, "
+            f"pred_len={len(prediction_timestamps)}, "
+            f"timeout_configured={self._settings.inference_timeout}s, "
+            f"timeout_used={timeout_seconds}s"
+        )
 
         try:
             # Run sync prediction in thread pool

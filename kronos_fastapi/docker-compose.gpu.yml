@@ -1,0 +1,104 @@
+version: '3.8'
+
+# GPU-optimized configuration for Kronos FastAPI Service
+# Requires: NVIDIA Docker runtime and compatible GPU
+# Usage: docker-compose -f docker-compose.gpu.yml up
+
+services:
+  kronos-api-gpu:
+    build:
+      context: ../..
+      dockerfile: services/kronos_fastapi/Dockerfile
+    image: kronos-fastapi:gpu
+    container_name: kronos-api-gpu
+    hostname: kronos-api-gpu
+
+    # GPU runtime configuration
+    runtime: nvidia
+
+    # Environment variables - GPU optimized
+    environment:
+      - KRONOS_APP_NAME=Kronos FastAPI Service (GPU)
+      - KRONOS_LOG_LEVEL=${KRONOS_LOG_LEVEL:-INFO}
+      - KRONOS_MODEL_PATH=/models
+      - KRONOS_DEVICE=cuda:0  # GPU device
+      - KRONOS_MAX_CONTEXT=512
+      - KRONOS_DEFAULT_PRED_LEN=120
+      - KRONOS_DEFAULT_TEMPERATURE=1.0
+      - KRONOS_DEFAULT_TOP_P=0.9
+      - KRONOS_ENABLE_METRICS=true
+      # Security settings (Phase 2)
+      - KRONOS_SECURITY_ENABLED=${KRONOS_SECURITY_ENABLED:-true}
+      - KRONOS_CONTAINER_WHITELIST=${KRONOS_CONTAINER_WHITELIST:-localhost,frontend-app,worker-service,scheduler}
+      - KRONOS_RATE_LIMIT_ENABLED=${KRONOS_RATE_LIMIT_ENABLED:-true}
+      - KRONOS_RATE_LIMIT_PER_MINUTE=${KRONOS_RATE_LIMIT_PER_MINUTE:-200}  # Higher for GPU
+      - KRONOS_MAX_REQUEST_SIZE_MB=${KRONOS_MAX_REQUEST_SIZE_MB:-20}  # Larger for GPU
+      # NVIDIA environment variables
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}  # GPU device ID
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    # Volumes
+    volumes:
+      - ${KRONOS_MODEL_HOST_PATH:-../../../models}:/models:ro  # Read-only model files
+      - logs-gpu:/logs  # Persistent logs
+
+    # Networks
+    networks:
+      - kronos-internal
+
+    # No external port mapping for security (internal access only)
+    # To access from host for testing, temporarily uncomment below:
+    # ports:
+    #   - "8001:8000"
+
+    # GPU resource limits and reservations
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'  # More CPUs for GPU workload
+          memory: 8G   # More memory for GPU
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+          devices:
+            - driver: nvidia
+              device_ids: ['0']  # GPU device 0
+              capabilities: [gpu]
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Graceful shutdown (Phase 5)
+    # Allow 30 seconds for in-flight requests to complete
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s  # Longer startup for GPU
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  kronos-internal:
+    driver: bridge
+    # Set to true for complete isolation (no internet access)
+    # Set to false to allow model downloads from Hugging Face
+    internal: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  logs-gpu:
+    driver: local

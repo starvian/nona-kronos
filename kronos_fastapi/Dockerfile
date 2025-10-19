@@ -23,8 +23,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements files
 WORKDIR /tmp
-COPY requirements.txt ./
-COPY ../../requirements.txt ./core-requirements.txt
+COPY services/kronos_fastapi/requirements.txt ./
+COPY gitSource/requirements.txt ./core-requirements.txt
 
 # Install Python dependencies
 RUN pip install --upgrade pip setuptools wheel && \
@@ -65,8 +65,8 @@ WORKDIR /app
 
 # Copy application code
 # Note: We copy from gitSource root to maintain import structure
-COPY --chown=kronos:kronos ../../model ./model
-COPY --chown=kronos:kronos . ./services/kronos_fastapi
+COPY --chown=kronos:kronos gitSource/model ./model
+COPY --chown=kronos:kronos services/kronos_fastapi ./services/kronos_fastapi
 
 # Switch to non-root user
 USER kronos

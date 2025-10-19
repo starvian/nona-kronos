@@ -1,0 +1,78 @@
+#!/bin/bash
+# Kronos GPU 模式启动脚本
+# 开发模式：不依赖 .env 文件，完全通过环境变量控制
+
+set -e
+
+echo "=========================================="
+echo "Kronos FastAPI - GPU 模式启动"
+echo "=========================================="
+
+# 获取项目根目录
+SERVICES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SERVICES_DIR")"
+GIT_SOURCE_DIR="$PROJECT_ROOT/gitSource"
+ENV_FILE="$PROJECT_ROOT/services/kronos_fastapi/.env"
+
+# 检查并临时重命名 .env 文件，避免配置冲突
+if [ -f "$ENV_FILE" ]; then
+    echo "⚠️  检测到 .env 文件，临时禁用以避免配置冲突"
+    mv "$ENV_FILE" "$ENV_FILE.disabled"
+    ENV_DISABLED=true
+else
+    ENV_DISABLED=false
+fi
+
+# 配置 GPU 模式
+export KRONOS_DEVICE=cuda:0
+export KRONOS_LOG_LEVEL=INFO
+export KRONOS_SECURITY_ENABLED=false
+export KRONOS_RATE_LIMIT_ENABLED=false
+
+# GPU 推理更快，使用较短超时
+export KRONOS_INFERENCE_TIMEOUT=60
+export KRONOS_REQUEST_TIMEOUT=90
+
+# 设置 PYTHONPATH
+export PYTHONPATH="$GIT_SOURCE_DIR:$PROJECT_ROOT"
+
+PORT=${1:-8000}
+
+echo "项目根目录: $PROJECT_ROOT"
+echo "工作目录: $PROJECT_ROOT"
+echo "PYTHONPATH: $PYTHONPATH"
+echo ""
+echo "配置:"
+echo "  端口: $PORT"
+echo "  设备: $KRONOS_DEVICE (Tesla M40 24GB)"
+echo "  推理超时: ${KRONOS_INFERENCE_TIMEOUT}秒"
+echo "  请求超时: ${KRONOS_REQUEST_TIMEOUT}秒"
+echo ""
+echo "检查 GPU..."
+nvidia-smi --query-gpu=name,memory.free,memory.total --format=csv,noheader || echo "  无法获取 GPU 信息"
+echo ""
+echo "模型加载需要 1-2 分钟，请耐心等待..."
+echo "按 Ctrl+C 停止服务"
+echo ""
+
+# 从项目根目录启动
+cd "$PROJECT_ROOT"
+
+# 清理函数：恢复 .env 文件
+cleanup() {
+    if [ "$ENV_DISABLED" = true ]; then
+        echo ""
+        echo "恢复 .env 文件..."
+        if [ -f "$ENV_FILE.disabled" ]; then
+            mv "$ENV_FILE.disabled" "$ENV_FILE"
+        fi
+    fi
+}
+
+# 注册退出时的清理函数
+trap cleanup EXIT INT TERM
+
+python -m uvicorn services.kronos_fastapi.main:app \
+    --host 0.0.0.0 \
+    --port $PORT \
+    --log-level info
