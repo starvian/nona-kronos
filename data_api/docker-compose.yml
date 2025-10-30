@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  data-api:
+    build:
+      context: ../..
+      dockerfile: services/data_api/Dockerfile
+    image: kronos-data-api:latest
+    container_name: kronos-data-api
+    env_file:
+      - .env
+    environment:
+      # Service configuration
+      - DATA_API_LOG_LEVEL=INFO
+      - DATA_API_APP_NAME=Kronos Data API Service
+
+      # ClickHouse connection - use values from .env file
+      # (env_file takes precedence, no need to specify here)
+
+      # Connection pool
+      - DATA_API_CLICKHOUSE_POOL_SIZE=10
+      - DATA_API_CLICKHOUSE_MAX_RETRIES=3
+      - DATA_API_CLICKHOUSE_TIMEOUT=30
+
+      # API settings
+      - DATA_API_API_PORT=8001
+      - DATA_API_API_HOST=0.0.0.0
+
+      # Data limits
+      - DATA_API_MAX_CANDLES_PER_REQUEST=10000
+      - DATA_API_DEFAULT_CANDLES_LIMIT=128
+
+      # Cache (optional, disabled by default)
+      - DATA_API_CACHE_ENABLED=false
+      - DATA_API_CACHE_TTL_SECONDS=60
+
+    network_mode: "host"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/v1/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# networks:
+  # kronos-network:
+  #   external: true
+# Note: Using host network mode for ClickHouse connectivity

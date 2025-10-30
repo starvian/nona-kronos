@@ -1,0 +1,18 @@
+# FastAPI and server
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# ClickHouse
+clickhouse-driver>=0.2.6
+
+# Configuration
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Utilities
+python-dateutil>=2.8.2
+pytz>=2023.3
