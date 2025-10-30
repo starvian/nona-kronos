@@ -32,11 +32,20 @@ Where:
 - **TICKET_002_PLN** - Productionization Roadmap (3-week plan)
 - **TICKET_003_DES** - Kronos FastAPI Microservice Design
 
-### Phase 2: Security (In Progress)
+### Phase 2: Security & HTTPS (In Progress)
 
-TBD - Security middleware implementation
+- **TICKET_004_DES** - Docker HTTPS Request Handler Design
 
-### Phase 3: Performance
+### Phase 3: Model Integration & Exploration
+
+- **TICKET_005_IMP** - TimeFM Integration Exploration
+
+### Client SDK & Data Integration
+
+- **TICKET_010_FEA** - Data Stream Client (128 candles → 1 prediction) ✅
+- **TICKET_011_DES** - ClickHouse Data Integration Design (Discussion) 💬
+
+### Phase 4: Performance
 
 TBD - Async inference and optimization
 
@@ -65,6 +74,15 @@ TBD - Comprehensive documentation
 - [Production Roadmap](TICKET_002_PLN_Productionization-Roadmap.md) - Overall plan
 - [Production Readiness](TICKET_001_IMP_FastAPI-Production-Readiness.md) - Initial assessment
 - [Service Design](TICKET_003_DES_Kronos-FastAPI-Microservice.md) - Architecture design
+- [HTTPS Request Handler](TICKET_004_DES_Docker-HTTPS-Request-Handler.md) - HTTPS & TLS/SSL design
+- [TimeFM Integration Exploration](TICKET_005_IMP_TimeFM-Integration-Exploration.md) - Model integration study
+- [Data Stream Client](TICKET_010_FEA_Data-Stream-Client.md) - Client SDK for prediction requests
+
+### TimesFM Resources
+
+- [Quick Start Guide](TIMESM_QUICK_START.md) - 5分钟速查表
+- [Financial Application Summary](TIMESM_FINANCIAL_APPLICATION_SUMMARY.md) - 详细分析报告
+- [Implementation Example](TIMESM_IMPLEMENTATION_EXAMPLE.md) - 代码框架和示例
 
 ## Creating New Tickets
 

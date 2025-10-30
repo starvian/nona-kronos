@@ -12,6 +12,10 @@ services:
     container_name: kronos-api-cpu
     hostname: kronos-api-cpu
 
+    # Load .env file
+    env_file:
+      - .env
+
     # Environment variables - CPU optimized
     environment:
       - KRONOS_APP_NAME=Kronos FastAPI Service (CPU)
@@ -24,9 +28,9 @@ services:
       - KRONOS_DEFAULT_TOP_P=0.9
       - KRONOS_ENABLE_METRICS=true
       # Security settings (Phase 2)
-      - KRONOS_SECURITY_ENABLED=${KRONOS_SECURITY_ENABLED:-true}
-      - KRONOS_CONTAINER_WHITELIST=${KRONOS_CONTAINER_WHITELIST:-localhost,frontend-app,worker-service,scheduler}
-      - KRONOS_RATE_LIMIT_ENABLED=${KRONOS_RATE_LIMIT_ENABLED:-true}
+      # DISABLED for development/testing with host access
+      - KRONOS_SECURITY_ENABLED=false
+      - KRONOS_RATE_LIMIT_ENABLED=false
       - KRONOS_RATE_LIMIT_PER_MINUTE=${KRONOS_RATE_LIMIT_PER_MINUTE:-100}
       - KRONOS_MAX_REQUEST_SIZE_MB=${KRONOS_MAX_REQUEST_SIZE_MB:-10}
 
@@ -39,10 +43,10 @@ services:
     networks:
       - kronos-internal
 
-    # No external port mapping for security (internal access only)
-    # To access from host for testing, temporarily uncomment below:
-    # ports:
-    #   - "8000:8000"
+    # External port mapping for host access
+    # Note: For production, use container network instead
+    ports:
+      - "8000:8000"
 
     # CPU resource limits - optimized for CPU inference
     deploy:

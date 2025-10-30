@@ -34,8 +34,12 @@ limiter = Limiter(
 
 app = FastAPI(title=settings.app_name)
 
-# Add security middleware
-app.add_middleware(ContainerWhitelistMiddleware, settings=settings)
+# Add security middleware (only if enabled)
+if settings.security_enabled:
+    app.add_middleware(ContainerWhitelistMiddleware, settings=settings)
+    logger.info("Security middleware enabled")
+else:
+    logger.warning("Security middleware DISABLED - all access allowed")
 
 # Add rate limiting
 app.state.limiter = limiter

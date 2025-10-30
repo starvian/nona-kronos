@@ -79,4 +79,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/v1/healthz || exit 1
 
 # Default command
+# NOTE: Use 0.0.0.0 to allow external access (development mode)
+# For production with reverse proxy, use 127.0.0.1
 CMD ["uvicorn", "services.kronos_fastapi.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

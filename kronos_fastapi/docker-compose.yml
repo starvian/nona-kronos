@@ -1,5 +1,17 @@
 version: '3.8'
 
+# ============================================================================
+# Kronos FastAPI Docker Compose Configuration
+#
+# Deployment Architecture:
+# - Kronos runs on 127.0.0.1:8000 (localhost only, not exposed to public)
+# - Apache2 reverse proxy handles HTTPS on ai.silvonastream.com
+# - SSL/TLS termination at Apache level (no SSL in container)
+#
+# Access Flow:
+# Client (HTTPS) → Apache (SSL/TLS) → 127.0.0.1:8000 (HTTP)
+# ============================================================================
+
 services:
   kronos-api:
     build:
@@ -36,10 +48,11 @@ services:
     networks:
       - kronos-internal
 
-    # No external port mapping for security (internal access only)
-    # To access from host for testing, temporarily uncomment below:
+    # ⚠️  IMPORTANT: NO external port mapping for security
+    # Kronos is accessed only through Apache reverse proxy on 127.0.0.1:8000
+    # For testing/debugging, temporarily uncommment below to expose port:
     # ports:
-    #   - "8000:8000"
+    #   - "127.0.0.1:8000:8000"  # Only localhost access
 
     # Resource limits
     deploy:
